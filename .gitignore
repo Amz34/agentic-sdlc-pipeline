@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Environment and secrets
+.env
+*.pem
+*.key
+
+# Test runs & scratch folders
+qa-run/
+test-repo/
+*.plan.md
+PR_DRAFT_*.md
+.DS_Store
+
+# IDE & Editor caches
+.idea/
+.vscode/
+*.swp

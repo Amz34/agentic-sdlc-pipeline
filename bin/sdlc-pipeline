@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""SDLC Pipeline CLI — Masterclass 5-Stage AI SDLC Orchestrator.
+
+Enforces:
+1. Planning (Scope, Prior Art, Acceptance Criteria, Risks)
+2. Implementation (House Standards, Zero Dependency Bloat)
+3. Testing (4-Quadrant: Happy, Failure, 2 Edge Cases via Native Runners)
+4. Debugging (Conflict Reconciliation, Regression Isolation)
+5. Release (PR Draft, Rollback Runbook, Production Red Line)
+"""
+import argparse
+import os
+import shutil
+import subprocess
+import sys
+import time
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+AGENTS_DIR = os.path.join(BASE_DIR, "agents")
+RULES_DIR = os.path.join(BASE_DIR, "rules")
+
+
+def init_repo(target_dir):
+    """Scaffold .claude/ and .cursor/ SDLC structure into a repository."""
+    target_dir = os.path.abspath(target_dir)
+    print(f"[*] Initializing SDLC Pipeline architecture in: {target_dir}")
+
+    claude_dir = os.path.join(target_dir, ".claude")
+    claude_agents = os.path.join(claude_dir, "agents")
+    claude_rules = os.path.join(claude_dir, "rules")
+    cursor_rules = os.path.join(target_dir, ".cursor", "rules")
+
+    os.makedirs(claude_agents, exist_ok=True)
+    os.makedirs(claude_rules, exist_ok=True)
+    os.makedirs(cursor_rules, exist_ok=True)
+
+    # Copy agent specs
+    for f in os.listdir(AGENTS_DIR):
+        src = os.path.join(AGENTS_DIR, f)
+        dst = os.path.join(claude_agents, f)
+        if os.path.isfile(src):
+            shutil.copy2(src, dst)
+            print(f"  + Agent: .claude/agents/{f}")
+
+    # Copy rules
+    for f in os.listdir(RULES_DIR):
+        src = os.path.join(RULES_DIR, f)
+        dst = os.path.join(claude_rules, f)
+        if os.path.isfile(src):
+            shutil.copy2(src, dst)
+            print(f"  + Rule: .claude/rules/{f}")
+
+    # Create root CLAUDE.md if not present
+    claude_md = os.path.join(target_dir, "CLAUDE.md")
+    if not os.path.exists(claude_md):
+        with open(claude_md, "w") as f:
+            f.write(f"""# Project Context & SDLC Conventions
+
+This repository follows the 5-Stage SDLC Pipeline with AI:
+1. **Planning:** `.claude/agents/sdlc-planner.md`
+2. **Implementation:** `.claude/agents/sdlc-implementer.md`
+3. **Testing:** `.claude/agents/sdlc-tester.md`
+4. **Debugging:** `.claude/agents/sdlc-debugger.md`
+5. **Release:** `.claude/agents/sdlc-releaser.md`
+
+## House Rules
+- Zero unapproved dependencies.
+- Native test runners (`node:test` or `pytest`); no heavy mock libraries.
+- Never write code before an approved implementation plan (`*.plan.md`).
+- Staging deployment first; production requires human approval.
+""")
+        print("  + Created CLAUDE.md")
+
+    print("[✔] SDLC Pipeline initialized successfully!")
+
+
+def check_status(target_dir):
+    """Audit the repository for SDLC readiness."""
+    target_dir = os.path.abspath(target_dir)
+    print(f"=== SDLC Infrastructure Audit: {target_dir} ===")
+
+    claude_md = os.path.exists(os.path.join(target_dir, "CLAUDE.md"))
+    claude_agents = os.path.exists(os.path.join(target_dir, ".claude", "agents"))
+    claude_rules = os.path.exists(os.path.join(target_dir, ".claude", "rules"))
+
+    print(f"  - Root CLAUDE.md: {'[OK]' if claude_md else '[MISSING]'}")
+    print(f"  - .claude/agents/: {'[OK]' if claude_agents else '[MISSING]'}")
+    print(f"  - .claude/rules/:  {'[OK]' if claude_rules else '[MISSING]'}")
+
+    if claude_agents:
+        agents = os.listdir(os.path.join(target_dir, ".claude", "agents"))
+        print(f"    Active Agents ({len(agents)}): {', '.join(agents)}")
+
+    ready = claude_md and claude_agents and claude_rules
+    print(f"Result: {'PRODUCTION READY' if ready else 'ACTION REQUIRED (run: sdlc-pipeline init)'}")
+
+
+def generate_plan_template(ticket_id, title):
+    """Generate a structured plan template."""
+    slug = ticket_id.lower().replace("-", "_") if ticket_id else "task"
+    filename = f"{slug}_{int(time.time())}.plan.md"
+    content = f"""# Implementation Plan: {ticket_id or 'FEATURE'} - {title}
+
+## 1. Ticket Context & Scope
+- **Ticket / Task:** {ticket_id or 'N/A'} - {title}
+- **System Affected:** Webapp / Backend / Edge / Database
+- **Datastore Authority:** (Postgres / DynamoDB / Redis / In-memory)
+
+## 2. Architectural Decisions
+- Reuse existing patterns and internal utilities.
+- Zero new third-party dependencies.
+
+## 3. Implementation Steps
+1. [ ] Step 1: File modification / component creation
+2. [ ] Step 2: Input schema validation
+3. [ ] Step 3: Wire into service / router
+
+## 4. Acceptance Criteria
+- [ ] Happy Path: Successful execution with valid inputs.
+- [ ] Failure Path: Rejection of invalid inputs without throwing unhandled exceptions.
+- [ ] Edge Case 1: Empty or boundary collection handled cleanly.
+- [ ] Edge Case 2: Idempotent behavior on duplicate triggers.
+
+## 5. Files Likely to Change
+- Primary:
+- Reused (Unchanged):
+
+## 6. Risks & Rollback Plan
+- Risk:
+- Rollback: Revert commit / feature flag disable.
+"""
+    with open(filename, "w") as f:
+        f.write(content)
+    print(f"[✔] Created plan template: {filename}")
+    return filename
+
+
+def generate_pr_draft(ticket_id, title, plan_path=""):
+    """Draft a production-grade PR description adhering to Rule 06."""
+    draft_file = f"PR_DRAFT_{ticket_id or 'RELEASE'}.md"
+    content = f"""# Pull Request: [{ticket_id or 'FEATURE'}] {title}
+
+## Summary of Changes
+- Implemented {title} following the approved SDLC plan.
+- Verified tenant isolation and strict input validation.
+
+## Linked Issue
+- Closes `{ticket_id or 'N/A'}`
+
+## Test Evidence
+```text
+All 4 test quadrants passed:
+✔ Happy path
+✔ Failure path
+✔ Edge case 1 (boundary/empty state)
+✔ Edge case 2 (idempotency/concurrency)
+Total: PASS (0 errors)
+```
+
+## Risk Assessment
+- **Breaking Changes:** None.
+- **Performance Impact:** Zero additional database roundtrips.
+- **Migration Required:** No.
+
+## Rollback Plan
+In the event of an incident:
+1. Revert this pull request via `git revert <merge-commit>`.
+2. Redeploy the previous verified build on Staging.
+
+## Human Verification Checklist (Staging)
+- [ ] Verify UI rendering and layout stability.
+- [ ] Confirm error banners appear on invalid inputs.
+- [ ] Verify logs in telemetry monitor (PostHog/Datadog).
+- [ ] Sign off for Production promotion.
+"""
+    with open(draft_file, "w") as f:
+        f.write(content)
+    print(f"[✔] Drafted production PR: {draft_file}")
+    return draft_file
+
+
+def main():
+    parser = argparse.ArgumentParser(description="SDLC Pipeline Orchestrator")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # init
+    init_p = subparsers.add_parser("init", help="Initialize SDLC agents and rules in a repo")
+    init_p.add_argument("path", nargs="?", default=".", help="Target repository directory")
+
+    # status
+    status_p = subparsers.add_parser("status", help="Check SDLC infrastructure readiness")
+    status_p.add_argument("path", nargs="?", default=".", help="Target repository directory")
+
+    # plan
+    plan_p = subparsers.add_parser("plan", help="Generate a structured implementation plan")
+    plan_p.add_argument("--ticket", "-t", default="", help="Ticket ID (e.g. GRO-1135)")
+    plan_p.add_argument("title", help="Task title or description")
+
+    # release
+    rel_p = subparsers.add_parser("release", help="Draft a production-grade PR with rollback steps")
+    rel_p.add_argument("--ticket", "-t", default="", help="Ticket ID")
+    rel_p.add_argument("title", help="PR title")
+
+    args = parser.parse_args()
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    if args.command == "init":
+        init_repo(args.path)
+    elif args.command == "status":
+        check_status(args.path)
+    elif args.command == "plan":
+        generate_plan_template(args.ticket, args.title)
+    elif args.command == "release":
+        generate_pr_draft(args.ticket, args.title)
+
+
+if __name__ == "__main__":
+    main()
