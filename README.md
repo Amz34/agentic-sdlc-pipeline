@@ -1,8 +1,11 @@
 # Agentic SDLC Pipeline
 
+![Agentic SDLC Pipeline CI/CD Architecture](assets/sdlc-pipeline-benefits.jpg)
+
 > **A production-tested 5-Stage SDLC Pipeline for autonomous AI coding agents (Claude Code, Cursor, Antigravity, Copilot).**  
 > Turn tickets into tested, verified, and rollback-ready pull requests with zero hallucinated architecture.
 
+[![CI](https://github.com/Amz34/agentic-sdlc-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/Amz34/agentic-sdlc-pipeline/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Architecture: 5-Stage SDLC](https://img.shields.io/badge/Architecture-5--Stage%20AI%20SDLC-emerald.svg)](rules/00-lifecycle.md)
 [![Zero-Dependency CLI](https://img.shields.io/badge/CLI-Python%20Stdlib-blue.svg)](bin/sdlc-pipeline)
